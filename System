@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>實驗室數據綜合計算系統 V3</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f4f7f9; --card: #ffffff; --header: #34495e; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); color: var(--primary); padding: 20px; line-height: 1.5; }
+        .container { max-width: 1150px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e8ed; }
+        h1 { text-align: center; color: var(--header); margin-bottom: 30px; border-bottom: 3px solid var(--accent); display: inline-block; width: 100%; padding-bottom: 10px; }
+        h2 { border-left: 5px solid var(--accent); padding-left: 12px; margin-top: 0; font-size: 1.25rem; color: var(--header); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.95rem; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+        th { background: #f8f9fa; font-weight: 600; }
+        input { width: 85%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; text-align: center; font-size: 0.95rem; }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+        .result-panel { background: #eef7ff; padding: 15px; border-radius: 6px; font-weight: bold; margin-top: 10px; border: 1px solid #b3d7ff; color: #004085; }
+        .highlight { color: #d35400; font-size: 1.1rem; }
+        .accuracy-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .acc-group { border: 1px solid #eee; border-radius: 8px; padding: 15px; background: #fff; }
+        .acc-header { background: var(--header); color: white; padding: 6px; text-align: center; border-radius: 4px; margin-bottom: 10px; font-weight: bold; }
+        .auto-tag { font-size: 0.7rem; background: #27ae60; color: white; padding: 2px 5px; border-radius: 3px; vertical-align: middle; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>實驗室數據綜合計算系統</h1>
+
+    <div class="card">
+        <h2>區塊一：系統適應性 (Standard Conformity)</h2>
+        <div class="grid">
+            <div>
+                <strong>STD 1 (標準品重量法)</strong>
+                <table>
+                    <tr><td>重量 Weight (mg)</td><td><input type="number" id="w1" value="10" oninput="calcAll()"></td></tr>
+                    <tr><td>純度 Factor (f)</td><td><input type="number" id="f1" value="1.0" oninput="calcAll()"></td></tr>
+                    <tr><td>體積 Volume (mL)</td><td><input type="number" id="v1" value="100" oninput="calcAll()"></td></tr>
+                    <tr><td>反應值 Response</td><td><input type="number" id="r1" value="20000" oninput="calcAll()"></td></tr>
+                </table>
+            </div>
+            <div>
+                <strong>STD 2 (標準品重量法)</strong>
+                <table>
+                    <tr><td>重量 Weight (mg)</td><td><input type="number" id="w2" value="10" oninput="calcAll()"></td></tr>
+                    <tr><td>純度 Factor (f)</td><td><input type="number" id="f2" value="1.0" oninput="calcAll()"></td></tr>
+                    <tr><td>體積 Volume (mL)</td><td><input type="number" id="v2" value="100" oninput="calcAll()"></td></tr>
+                    <tr><td>反應值 Response</td><td><input type="number" id="r2" value="19950" oninput="calcAll()"></td></tr>
+                </table>
+            </div>
+        </div>
+        <div class="result-panel" id="sys-res">Conform (Agreement): - %</div>
+    </div>
+
+    <div class="card">
+        <h2>區塊二：線性回歸 (Linearity) - 雙針平均</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th width="10%">Level</th>
+                    <th width="25%">濃度 (X)</th>
+                    <th width="20%">反應值 1</th>
+                    <th width="20%">反應值 2</th>
+                    <th width="25%">平均反應值 (Y)</th>
+                </tr>
+            </thead>
+            <tbody id="lin-body">
+                <script>
+                    const labels = ["L1 (低)", "L2", "L3 (中)", "L4", "L5 (高)"];
+                    for(let i=0; i<5; i++) {
+                        document.write(`<tr>
+                            <td>${labels[i]}</td>
+                            <td><input type="number" class="lx" id="lx_${i}" oninput="calcAll()"></td>
+                            <td><input type="number" class="ly1" oninput="calcAll()"></td>
+                            <td><input type="number" class="ly2" oninput="calcAll()"></td>
+                            <td class="ly-avg" style="background:#fcfcfc; color:#666;">-</td>
+                        </tr>`);
+                    }
+                </script>
+            </tbody>
+        </table>
+        <div class="grid">
+            <div class="result-panel">
+                線性公式：<span id="lin-eq">-</span><br>
+                相關係數 R²：<span id="lin-r2" class="highlight">-</span>
+            </div>
+            <div class="result-panel">
+                100% 濃度預測 (由 Y = mX + b 算出)：<br>
+                當 X = <input type="number" id="pred-x" style="width:80px" oninput="calcAll()"> 時, 
+                理論 Y = <span id="pred-y" class="highlight">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>區塊三：準確度 (Accuracy) - 3 濃度 x n=3</h2>
+        <div class="accuracy-container">
+            <div class="acc-group">
+                <div class="acc-header">低濃度 (Low) <span class="auto-tag">連動 L1</span></div>
+                <label>理論值:</label> <input type="number" id="acc-theo-0" class="acc-theo" readonly style="background:#f1f3f5; border:none; color:#495057; font-weight:bold;">
+                <table>
+                    <tr><td>n1</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n2</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n3</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                </table>
+                <div class="result-panel">平均回收率: <span class="acc-avg">-</span></div>
+            </div>
+            <div class="acc-group">
+                <div class="acc-header">中間濃度 (Mid) <span class="auto-tag">連動 L3</span></div>
+                <label>理論值:</label> <input type="number" id="acc-theo-1" class="acc-theo" readonly style="background:#f1f3f5; border:none; color:#495057; font-weight:bold;">
+                <table>
+                    <tr><td>n1</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n2</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n3</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                </table>
+                <div class="result-panel">平均回收率: <span class="acc-avg">-</span></div>
+            </div>
+            <div class="acc-group">
+                <div class="acc-header">高濃度 (High) <span class="auto-tag">連動 L5</span></div>
+                <label>理論值:</label> <input type="number" id="acc-theo-2" class="acc-theo" readonly style="background:#f1f3f5; border:none; color:#495057; font-weight:bold;">
+                <table>
+                    <tr><td>n1</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n2</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                    <tr><td>n3</td><td><input type="number" class="acc-r" oninput="calcAll()"></td></tr>
+                </table>
+                <div class="result-panel">平均回收率: <span class="acc-avg">-</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let slope = 0, intercept = 0;
+
+    // 總計算入口
+    function calcAll() {
+        syncTheoretics(); // 1. 先同步連動濃度
+        calcSys();        // 2. 計算 Conform
+        calcLin();        // 3. 計算線性回歸 (會產出 slope/intercept)
+        calcAcc();        // 4. 計算 Accuracy
+    }
+
+    // 同步區塊二的 L1, L3, L5 到區塊三的理論值
+    function syncTheoretics() {
+        const l1 = document.getElementById('lx_0').value;
+        const l3 = document.getElementById('lx_2').value;
+        const l5 = document.getElementById('lx_4').value;
+        
+        document.getElementById('acc-theo-0').value = l1;
+        document.getElementById('acc-theo-1').value = l3;
+        document.getElementById('acc-theo-2').value = l5;
+    }
+
+    // 區塊一：Conform 計算
+    function calcSys() {
+        const getV = id => parseFloat(document.getElementById(id).value) || 0;
+        const c1 = (getV('w1') * getV('f1')) / getV('v1');
+        const c2 = (getV('w2') * getV('f2')) / getV('v2');
+        const sens1 = getV('r1') / c1;
+        const sens2 = getV('r2') / c2;
+        
+        if(sens1 > 0 && sens2 > 0) {
+            const agreement = (sens2 / sens1) * 100;
+            document.getElementById('sys-res').innerHTML = `STD1 濃度: ${c1.toFixed(5)} | STD2 濃度: ${c2.toFixed(5)} | <span class="highlight">Agreement: ${agreement.toFixed(2)} %</span>`;
+        } else {
+            document.getElementById('sys-res').innerText = "Conform (Agreement): - %";
+        }
+    }
+
+    // 區塊二：線性回歸計算
+    function calcLin() {
+        const xs = document.querySelectorAll('.lx');
+        const y1s = document.querySelectorAll('.ly1');
+        const y2s = document.querySelectorAll('.ly2');
+        const avgs = document.querySelectorAll('.ly-avg');
+        
+        let dataX = [], dataY = [];
+        
+        xs.forEach((el, i) => {
+            const x = parseFloat(el.value);
+            const r1 = parseFloat(y1s[i].value);
+            const r2 = parseFloat(y2s[i].value);
+            
+            if(!isNaN(x) && (!isNaN(r1) || !isNaN(r2))) {
+                const avg = (!isNaN(r1) && !isNaN(r2)) ? (r1 + r2) / 2 : (r1 || r2);
+                avgs[i].innerText = avg.toFixed(2);
+                dataX.push(x);
+                dataY.push(avg);
+            } else {
+                avgs[i].innerText = '-';
+            }
+        });
+
+        if(dataX.length >= 2) {
+            const n = dataX.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
+            for(let i=0; i<n; i++) {
+                sumX += dataX[i]; sumY += dataY[i];
+                sumXY += dataX[i] * dataY[i];
+                sumXX += dataX[i] * dataX[i];
+                sumYY += dataY[i] * dataY[i];
+            }
+            const denom = (n * sumXX - sumX * sumX);
+            if(denom !== 0) {
+                slope = (n * sumXY - sumX * sumY) / denom;
+                intercept = (sumY - slope * sumX) / n;
+                const rDenom = Math.sqrt((n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY));
+                const r = rDenom !== 0 ? (n * sumXY - sumX * sumY) / rDenom : 0;
+                
+                document.getElementById('lin-eq').innerText = `Y = ${slope.toFixed(4)}X ${intercept >=0 ? '+' : ''} ${intercept.toFixed(4)}`;
+                document.getElementById('lin-r2').innerText = (r * r).toFixed(5);
+                
+                // 預測 Y
+                const px = parseFloat(document.getElementById('pred-x').value);
+                if(!isNaN(px)) {
+                    document.getElementById('pred-y').innerText = (slope * px + intercept).toFixed(2);
+                } else {
+                    document.getElementById('pred-y').innerText = "-";
+                }
+            }
+        } else {
+            slope = 0; intercept = 0;
+            document.getElementById('lin-eq').innerText = "-";
+            document.getElementById('lin-r2').innerText = "-";
+            document.getElementById('pred-y').innerText = "-";
+        }
+    }
+
+    // 區塊三：Accuracy 回收率計算
+    function calcAcc() {
+        const theos = document.querySelectorAll('.acc-theo');
+        const resps = document.querySelectorAll('.acc-r');
+        const avgDisplays = document.querySelectorAll('.acc-avg');
+
+        theos.forEach((theoEl, groupIdx) => {
+            const theoretical = parseFloat(theoEl.value);
+            let groupRecoveries = [];
+            
+            for(let i=0; i<3; i++) {
+                const resp = parseFloat(resps[groupIdx * 3 + i].value);
+                if(!isNaN(resp) && slope !== 0 && !isNaN(theoretical) && theoretical !== 0) {
+                    // 根據線性公式回算 X_found = (Y - Intercept) / Slope
+                    const calculatedX = (resp - intercept) / slope;
+                    const recovery = (calculatedX / theoretical) * 100;
+                    groupRecoveries.push(recovery);
+                }
+            }
+            
+            if(groupRecoveries.length > 0) {
+                const avgRec = groupRecoveries.reduce((a,b) => a+b) / groupRecoveries.length;
+                avgDisplays[groupIdx].innerText = avgRec.toFixed(2) + ' %';
+            } else {
+                avgDisplays[groupIdx].innerText = '-';
+            }
+        });
+    }
+
+    // 初始執行
+    window.onload = calcAll;
+</script>
+
+</body>
+</html>
